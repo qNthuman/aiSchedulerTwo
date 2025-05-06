@@ -45,9 +45,8 @@ def generate_suggestions(marks_df, daily_schedule, upcoming_tests):
 
     # Suggest study areas based on weak subjects
     required_cols = {'Subject', 'Score %'}
-        if not required_cols.issubset(marks_df.columns):
-            st.append("missing")
-            return []
+    if not required_cols.issubset(marks_df.columns):
+        st.append("missing")
 
     weak_subjects = marks_df.groupby('Subject')['Score %'].mean().sort_values().head(3).index.tolist()
     for subject in weak_subjects:
