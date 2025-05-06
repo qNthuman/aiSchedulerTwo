@@ -158,7 +158,7 @@ init_data()
 data = load_data()
 
 # Sidebar for navigation
-page = st.sidebar.selectbox("Navigate", ["Add Study Progress", "View Study Progress", "Add JEE Mock Test Result", "View JEE Mock Test Results", "Add IAT Mock Test Result", "View IAT Mock Test Results", "Add JEE Performance", "View JEE Performance Analysis"])
+page = st.sidebar.selectbox("Navigate", ["Add Study Progress", "View Study Progress", "Add JEE Mock Test Result", "View JEE Mock Test Results", "Add IAT Mock Test Result", "View IAT Mock Test Results"])
 
 # Add Study Progress
 if page == "Add Study Progress":
