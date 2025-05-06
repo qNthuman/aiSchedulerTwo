@@ -239,26 +239,3 @@ elif page == "View IAT Mock Test Results":
                 result = delete_iat_mock_test(i)
                 st.success(result)
                 st.experimental_rerun()
-
-# Add JEE Performance
-elif page == "Add JEE Performance":
-    st.header("➕ Add JEE Performance Data")
-    score = st.number_input("Enter your JEE performance score", min_value=0, max_value=300)
-    accuracy = st.slider("Enter your JEE performance accuracy (%)", 0, 100, 0)
-    time_taken = st.number_input("Time Taken (in minutes)", min_value=0)
-    attempted = st.number_input("Total questions attempted", min_value=0, max_value=240)
-    correct = st.number_input("Total questions correct", min_value=0, max_value=240)
-    incorrect = st.number_input("Total questions incorrect", min_value=0, max_value=240)
-    unattempted = st.number_input("Total questions unattempted", min_value=0, max_value=240)
-    if st.button("Add JEE Performance Data"):
-        if score == 0:
-            st.error("❌ Please enter a valid score.")
-        else:
-            result = add_jee_performance(score, accuracy, time_taken, attempted, correct, incorrect, unattempted)
-            st.success(result)
-
-# View JEE Performance Analysis
-elif page == "View JEE Performance Analysis":
-    st.header("📊 JEE Performance Analysis")
-    analysis = get_jee_performance_analysis()
-    st.write(analysis)
