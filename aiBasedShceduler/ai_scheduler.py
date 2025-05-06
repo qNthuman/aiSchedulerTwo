@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import json
 from datetime import datetime
-import openai  # Assuming you're using OpenAI API for suggestions
+import pandas as pd
 
 # File to store notes, reflections, and test scores
 data_file = "curious_data.json"
@@ -50,6 +50,12 @@ def delete_entry(entry_type, index):
     return "⚠️ Invalid index."
 
 def add_test_score(score, accuracy, date):
+    # Validate the test score and accuracy
+    if not (0 <= score <= 300):  # Assuming max score is 300
+        return "❌ Score must be between 0 and 300."
+    if not (0 <= accuracy <= 100):
+        return "❌ Accuracy must be between 0 and 100."
+    
     data = load_data()
     test_score = {
         "score": score,
@@ -58,30 +64,43 @@ def add_test_score(score, accuracy, date):
     }
     data["test_scores"].append(test_score)
     save_data(data)
+    return "✅ Test score added successfully."
 
-def get_suggestions():
-    # Gather user's reflections and performance
+def delete_test_score(index):
     data = load_data()
-    reflections = " ".join([entry["text"] for entry in data["reflections"]])
-    test_scores = data["test_scores"]
+    if 0 <= index < len(data["test_scores"]):
+        removed = data["test_scores"].pop(index)
+        save_data(data)
+        return f"🗑️ Deleted test score: {removed['score']} on {removed['date']}"
+    return "⚠️ Invalid index."
+
+def get_performance_analysis():
+    # Load and convert test scores to a DataFrame for analysis
+    data = load_data()
+    if not data["test_scores"]:
+        return "No test scores to analyze."
     
-    # Assuming OpenAI GPT model for generating suggestions based on reflections and performance
-    openai.api_key = "your_openai_api_key"
+    test_scores_df = pd.DataFrame(data["test_scores"])
     
-    prompt = f"""
-    Based on the following reflections and past test scores, provide study suggestions:
-    Reflections: {reflections}
-    Test Scores: {test_scores}
-    """
+    # Calculate average score and accuracy
+    avg_score = test_scores_df["score"].mean()
+    avg_accuracy = test_scores_df["accuracy"].mean()
+
+    # Generate basic suggestions
+    suggestions = []
+    if avg_accuracy < 70:
+        suggestions.append("❗ Your accuracy is below 70%. Focus on reviewing weak areas.")
+    if avg_score < 60:
+        suggestions.append("❗ Your score is low overall. Consider adjusting your study approach.")
+
+    # Analyze trends in scores (last 3 scores comparison)
+    if len(test_scores_df) > 2:
+        recent_scores = test_scores_df.tail(3)
+        score_trend = recent_scores["score"].mean()
+        if score_trend < avg_score:
+            suggestions.append("📉 Your recent scores are lower than the average. Revisit previous topics.")
     
-    response = openai.Completion.create(
-        engine="text-davinci-003",  # You can use the GPT engine of your choice
-        prompt=prompt,
-        max_tokens=150
-    )
-    
-    suggestions = response.choices[0].text.strip()
-    return suggestions
+    return f"🧑‍🏫 **Average Score**: {avg_score:.2f} | **Average Accuracy**: {avg_accuracy:.2f}%\n\n" + "\n".join(suggestions)
 
 # Initialize and load data
 st.set_page_config(page_title="Curious Manager", layout="centered")
@@ -92,7 +111,7 @@ init_data()
 data = load_data()
 
 # Sidebar for navigation
-page = st.sidebar.selectbox("Navigate", ["Add Entry", "View Notes", "View Reflections", "Add Test Score", "View Test Performance", "AI Suggestions"])
+page = st.sidebar.selectbox("Navigate", ["Add Entry", "View Notes", "View Reflections", "Add Test Score", "View Test Performance", "Performance Analysis"])
 
 if page == "Add Entry":
     st.header("➕ Add a New Entry")
@@ -136,8 +155,8 @@ elif page == "Add Test Score":
     accuracy = st.slider("Enter accuracy (%)", 0, 100, 0)
     date = st.date_input("Test Date")
     if st.button("Add Test Score"):
-        add_test_score(score, accuracy, date)
-        st.success("✅ Test score added successfully.")
+        result = add_test_score(score, accuracy, date)
+        st.success(result)
 
 elif page == "View Test Performance":
     st.header("📈 Test Performance")
@@ -149,14 +168,15 @@ elif page == "View Test Performance":
         average_score = total_scores / total_tests if total_tests > 0 else 0
         st.write(f"Average Score: {average_score}")
         
-        # Display test scores
-        for score in data["test_scores"]:
+        # Display test scores and allow removal
+        for i, score in enumerate(data["test_scores"]):
             st.write(f"Score: {score['score']} | Accuracy: {score['accuracy']}% | Date: {score['date']}")
+            if st.button(f"Delete Test Score {i}", key=f"delete_test_score_{i}"):
+                result = delete_test_score(i)
+                st.success(result)
+                st.experimental_rerun()
 
-elif page == "AI Suggestions":
-    st.header("🤖 AI Study Suggestions")
-    suggestions = get_suggestions()
-    if suggestions:
-        st.write(suggestions)
-    else:
-        st.info("No suggestions available at the moment. Add more reflections and test scores to get personalized recommendations.")
+elif page == "Performance Analysis":
+    st.header("📊 Performance Analysis")
+    analysis = get_performance_analysis()
+    st.markdown(analysis)
