@@ -2,26 +2,27 @@ import streamlit as st
 import os
 import json
 from datetime import datetime
+import openai  # Assuming you're using OpenAI API for suggestions
 
-# File to store notes and reflections
-DATA_FILE = "curious_data.json"
+# File to store notes, reflections, and test scores
+data_file = "curious_data.json"
 
 # Initialize data file if it doesn't exist
 def init_data():
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'w') as f:
-            json.dump({"notes": [], "reflections": [], "tests": []}, f)
+    if not os.path.exists(data_file):
+        with open(data_file, 'w') as f:
+            json.dump({"notes": [], "reflections": [], "test_scores": []}, f)
 
 def load_data():
     try:
-        with open(DATA_FILE, 'r') as f:
+        with open(data_file, 'r') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         init_data()
-        return {"notes": [], "reflections": [], "tests": []}
+        return {"notes": [], "reflections": [], "test_scores": []}
 
 def save_data(data):
-    with open(DATA_FILE, 'w') as f:
+    with open(data_file, 'w') as f:
         json.dump(data, f, indent=4)
 
 def add_entry(entry_type, text):
@@ -40,46 +41,58 @@ def add_entry(entry_type, text):
     save_data(data)
     return "✅ Entry added successfully."
 
-def add_test(score, total):
-    try:
-        score = float(score)
-        total = float(total)
-    except ValueError:
-        return "❌ Score and total must be numeric."
-
-    if score < 0 or total <= 0 or score > total:
-        return "⚠️ Invalid test data."
-
-    data = load_data()
-    accuracy = round((score / total) * 100, 2)
-    entry = {
-        "score": score,
-        "total": total,
-        "accuracy": accuracy,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-    data["tests"].append(entry)
-    save_data(data)
-    return f"✅ Test added. Accuracy: {accuracy}%"
-
 def delete_entry(entry_type, index):
     data = load_data()
     if entry_type in data and 0 <= index < len(data[entry_type]):
         removed = data[entry_type].pop(index)
         save_data(data)
-        return f"🗑️ Deleted: {removed.get('text', 'test entry')}"
+        return f"🗑️ Deleted: {removed['text']}"
     return "⚠️ Invalid index."
+
+def add_test_score(score, accuracy, date):
+    data = load_data()
+    test_score = {
+        "score": score,
+        "accuracy": accuracy,
+        "date": date
+    }
+    data["test_scores"].append(test_score)
+    save_data(data)
+
+def get_suggestions():
+    # Gather user's reflections and performance
+    data = load_data()
+    reflections = " ".join([entry["text"] for entry in data["reflections"]])
+    test_scores = data["test_scores"]
+    
+    # Assuming OpenAI GPT model for generating suggestions based on reflections and performance
+    openai.api_key = "your_openai_api_key"
+    
+    prompt = f"""
+    Based on the following reflections and past test scores, provide study suggestions:
+    Reflections: {reflections}
+    Test Scores: {test_scores}
+    """
+    
+    response = openai.Completion.create(
+        engine="text-davinci-003",  # You can use the GPT engine of your choice
+        prompt=prompt,
+        max_tokens=150
+    )
+    
+    suggestions = response.choices[0].text.strip()
+    return suggestions
 
 # Initialize and load data
 st.set_page_config(page_title="Curious Manager", layout="centered")
 st.title("🧠 Curious Manager")
-st.markdown("Track your curious thoughts, reflections, and test performance.")
+st.markdown("Track your curious thoughts, reflections, and test scores.")
 
 init_data()
 data = load_data()
 
 # Sidebar for navigation
-page = st.sidebar.selectbox("Navigate", ["Add Entry", "View Notes", "View Reflections", "Add Test Score", "View Performance"])
+page = st.sidebar.selectbox("Navigate", ["Add Entry", "View Notes", "View Reflections", "Add Test Score", "View Test Performance", "AI Suggestions"])
 
 if page == "Add Entry":
     st.header("➕ Add a New Entry")
@@ -118,22 +131,32 @@ elif page == "View Reflections":
                     st.experimental_rerun()
 
 elif page == "Add Test Score":
-    st.header("🧪 Add Test Score")
-    score = st.text_input("Score")
-    total = st.text_input("Total Marks")
-    if st.button("Submit Test Score"):
-        result = add_test(score, total)
-        st.success(result)
+    st.header("📊 Add Test Score")
+    score = st.number_input("Enter your score", min_value=0)
+    accuracy = st.slider("Enter accuracy (%)", 0, 100, 0)
+    date = st.date_input("Test Date")
+    if st.button("Add Test Score"):
+        add_test_score(score, accuracy, date)
+        st.success("✅ Test score added successfully.")
 
-elif page == "View Performance":
-    st.header("📊 Performance Overview")
-    if not data["tests"]:
-        st.info("No test data available. Add some from the 'Add Test Score' page.")
+elif page == "View Test Performance":
+    st.header("📈 Test Performance")
+    if not data["test_scores"]:
+        st.info("No test scores yet. Add some from the 'Add Test Score' page.")
     else:
-        accuracies = []
-        for i, test in enumerate(reversed(data["tests"])):
-            st.write(f"🕒 {test['timestamp']} - Score: {test['score']} / {test['total']} → Accuracy: {test['accuracy']}%")
-            accuracies.append(test['accuracy'])
+        total_scores = sum([score["score"] for score in data["test_scores"]])
+        total_tests = len(data["test_scores"])
+        average_score = total_scores / total_tests if total_tests > 0 else 0
+        st.write(f"Average Score: {average_score}")
+        
+        # Display test scores
+        for score in data["test_scores"]:
+            st.write(f"Score: {score['score']} | Accuracy: {score['accuracy']}% | Date: {score['date']}")
 
-        avg_accuracy = round(sum(accuracies) / len(accuracies), 2)
-        st.markdown(f"**📈 Average Accuracy:** {avg_accuracy}%")
+elif page == "AI Suggestions":
+    st.header("🤖 AI Study Suggestions")
+    suggestions = get_suggestions()
+    if suggestions:
+        st.write(suggestions)
+    else:
+        st.info("No suggestions available at the moment. Add more reflections and test scores to get personalized recommendations.")
