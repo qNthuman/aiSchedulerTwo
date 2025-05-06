@@ -158,6 +158,8 @@ def app_ui():
                 st.success("Score logged!")
 
         st.subheader("Test Scores")
+        marks_df = None  # or pd.DataFrame() depending on your use case
+
         if isinstance(marks_df, pd.DataFrame):
     # then safe to do marks_df.empty
             if not marks_df.empty:
