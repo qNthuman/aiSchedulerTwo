@@ -151,6 +151,8 @@ def app_ui():
                     "Total": total,
                     "Notes": notes
                 }
+                if marks_df is None:
+                    marks_df = pd.DataFrame()
                 marks_df = pd.concat([marks_df, pd.DataFrame([new_row])], ignore_index=True)
                 marks_df.to_csv(marks_path, index=False)
                 st.success("Score logged!")
