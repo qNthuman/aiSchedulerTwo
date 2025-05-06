@@ -158,50 +158,52 @@ def app_ui():
                 st.success("Score logged!")
 
         st.subheader("Test Scores")
-        if not marks_df.empty:
-            marks_df["Date"] = pd.to_datetime(marks_df["Date"])
-            unique_dates = sorted(marks_df["Date"].dt.strftime('%Y-%m-%d').unique())
-            selected_date = st.selectbox("Filter by Test Date", ["All"] + unique_dates)
-            
-            # Ensure Test Type is a string before sorting
-            selected_type = st.selectbox("Filter by Test Type", ["All"] + sorted(marks_df["Test Type"].astype(str).unique()))
-
-            filtered_df = marks_df.copy()
-            if selected_date != "All":
-                filtered_df = filtered_df[filtered_df["Date"].dt.strftime('%Y-%m-%d') == selected_date]
-            if selected_type != "All":
-                filtered_df = filtered_df[filtered_df["Test Type"] == selected_type]
-
-            st.dataframe(filtered_df[["Date", "Subject", "Test Type", "Score", "Total", "Notes"]])
-
-            filtered_df["Score %"] = (filtered_df["Score"] / filtered_df["Total"]) * 100
-            score_chart = filtered_df.groupby(["Date", "Subject"])["Score %"].mean().unstack()
-            st.line_chart(score_chart)
-
-            st.subheader("📊 Performance Breakdown")
-            acc_chart = filtered_df.groupby("Subject")["Score %"].mean().sort_values()
-            st.bar_chart(acc_chart)
-
-            st.markdown("**Overall Stats:**")
-            total_tests = len(filtered_df)
-            avg_accuracy = round(filtered_df["Score %"].mean(), 2)
-            best_score = filtered_df["Score"].max()
-            worst_score = filtered_df["Score"].min()
-
-            st.info(f"Total Tests: {total_tests}")
-            st.success(f"Average Score: {avg_accuracy}%")
-            st.info(f"Best Score: {best_score}")
-            st.warning(f"Lowest Score: {worst_score}")
-
-        # Remove Test Entry
-        for idx, row in filtered_df.iterrows():
-            col1, col2 = st.columns([6, 1])
-            col1.write(f"**{row['Date']}**: {row['Subject']} - {row['Score']}/{row['Total']}")
-            if col2.button(f"❌ Remove Test {idx}", key=f"remove_test_{idx}"):
-                marks_df.drop(idx, inplace=True)
-                marks_df.to_csv(marks_path, index=False)
-                st.rerun()
-            # Your logic to manage tests goes here
+        if isinstance(marks_df, pd.DataFrame):
+    # then safe to do marks_df.empty
+            if not marks_df.empty:
+                marks_df["Date"] = pd.to_datetime(marks_df["Date"])
+                unique_dates = sorted(marks_df["Date"].dt.strftime('%Y-%m-%d').unique())
+                selected_date = st.selectbox("Filter by Test Date", ["All"] + unique_dates)
+                
+                # Ensure Test Type is a string before sorting
+                selected_type = st.selectbox("Filter by Test Type", ["All"] + sorted(marks_df["Test Type"].astype(str).unique()))
+    
+                filtered_df = marks_df.copy()
+                if selected_date != "All":
+                    filtered_df = filtered_df[filtered_df["Date"].dt.strftime('%Y-%m-%d') == selected_date]
+                if selected_type != "All":
+                    filtered_df = filtered_df[filtered_df["Test Type"] == selected_type]
+    
+                st.dataframe(filtered_df[["Date", "Subject", "Test Type", "Score", "Total", "Notes"]])
+    
+                filtered_df["Score %"] = (filtered_df["Score"] / filtered_df["Total"]) * 100
+                score_chart = filtered_df.groupby(["Date", "Subject"])["Score %"].mean().unstack()
+                st.line_chart(score_chart)
+    
+                st.subheader("📊 Performance Breakdown")
+                acc_chart = filtered_df.groupby("Subject")["Score %"].mean().sort_values()
+                st.bar_chart(acc_chart)
+    
+                st.markdown("**Overall Stats:**")
+                total_tests = len(filtered_df)
+                avg_accuracy = round(filtered_df["Score %"].mean(), 2)
+                best_score = filtered_df["Score"].max()
+                worst_score = filtered_df["Score"].min()
+    
+                st.info(f"Total Tests: {total_tests}")
+                st.success(f"Average Score: {avg_accuracy}%")
+                st.info(f"Best Score: {best_score}")
+                st.warning(f"Lowest Score: {worst_score}")
+    
+            # Remove Test Entry
+            for idx, row in filtered_df.iterrows():
+                col1, col2 = st.columns([6, 1])
+                col1.write(f"**{row['Date']}**: {row['Subject']} - {row['Score']}/{row['Total']}")
+                if col2.button(f"❌ Remove Test {idx}", key=f"remove_test_{idx}"):
+                    marks_df.drop(idx, inplace=True)
+                    marks_df.to_csv(marks_path, index=False)
+                    st.rerun()
+                # Your logic to manage tests goes here
 
     elif choice == "To-Do List":
         # Include to-do list management logic here
